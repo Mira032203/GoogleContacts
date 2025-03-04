@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Google Contacts</title>
+</head>
+<body>
+<h1>Your Contacts</h1>
+<ul>
+    <li th:each="contact : ${contacts}">
+        <span th:text="${contact.displayName}"></span>
+        <span th:text="${contact.email}"></span>
+
+        <!-- Update Contact Form -->
+        <form action="/contacts/update" method="post">
+            <input type="hidden" name="resourceName" th:value="${contact.resourceName}">
+            <input type="hidden" name="etag" value="${contact.etag}">
+            <input type="text" name="name" th:value="${contact.displayName}" required>
+            <input type="email" name="email" th:value="${contact.email}" required>
+            <button type="submit">Update</button>
+        </form>
+
+        <!-- Delete Contact Form -->
+        <form action="/contacts/delete" method="post">
+            <input type="hidden" name="resourceName" th:value="${contact.resourceName}">
+            <button type="submit">Delete</button>
+        </form>
+    </li>
+</ul>
+
+
+<!-- Add Contact Form -->
+<form id="addContactForm" action="/contacts/add" method="post">
+    <input type="text" name="name" placeholder="Name" required>
+    <input type="email" name="email" placeholder="Email" required>
+    <button type="submit">Add Contact</button>
+</form>
+
+</body>
+</html>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const addContactForm = document.getElementById("addContactForm");
+        addContactForm.addEventListener("submit", function(event) {
+            event.preventDefault(); // Prevent default form submission
+            fetch(addContactForm.action, {
+                method: "POST",
+                body: new FormData(addContactForm)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Contact Added:", data);
+                location.reload(); // Refresh the page after adding
+            })
+            .catch(error => console.error("Error:", error));
+        });
+    });
+</script>
