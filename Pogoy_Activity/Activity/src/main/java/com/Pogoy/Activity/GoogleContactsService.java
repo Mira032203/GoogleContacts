@@ -69,38 +69,54 @@ public class GoogleContactsService {
         }
 
     }
-    public String updateContact(OAuth2AuthenticationToken authentication, String resourceName, String newName, String newEmail, String etag) {
+    public String updateContact(OAuth2AuthenticationToken authentication, String resourceName, String newName, String newEmail) {
         String token = getAccessToken(authentication);
-        RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
 
+        RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("If-Match", etag); // Ensure updates are not overwriting changes
 
-        // Construct payload
-        Map<String, Object> updatedContact = new HashMap<>();
-        updatedContact.put("names", List.of(Map.of("givenName", newName)));
-        updatedContact.put("emailAddresses", List.of(Map.of("value", newEmail)));
+        logger.info("Updating contact: {}", resourceName);
 
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(updatedContact, headers);
+        // Fetch the current contact details to get the `etag`
+        String getUrl = "https://people.googleapis.com/v1/" + resourceName + "?personFields=names,emailAddresses,etag";
+        HttpEntity<Void> getRequest = new HttpEntity<>(headers);
 
-        String updateUrl = UPDATE_CONTACT_URL.replace("{resourceName}", resourceName);
+        ResponseEntity<Map> getResponse = restTemplate.exchange(getUrl, HttpMethod.GET, getRequest, Map.class);
+        logger.info("Fetched Contact: {}", getResponse.getBody());
+
+        String etag = (String) getResponse.getBody().get("etag");
+
+        if (etag == null) {
+            throw new RuntimeException("Failed to retrieve etag for contact update.");
+        }
+
+        // Prepare update payload with etag
+        Map<String, Object> contactUpdate = new HashMap<>();
+        contactUpdate.put("etag", etag);
+        contactUpdate.put("names", List.of(Map.of("givenName", newName)));
+        contactUpdate.put("emailAddresses", List.of(Map.of("value", newEmail)));
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(contactUpdate, headers);
 
         try {
-            ResponseEntity<String> response = restTemplate.exchange(
-                    updateUrl,
-                    HttpMethod.POST,
-                    request,
-                    String.class
-            );
+            // Use the predefined constant instead of inline URL
+            String updateUrl = UPDATE_CONTACT_URL.replace("{resourceName}", resourceName) + "?updatePersonFields=names,emailAddresses";
+
+            logger.info("PATCH Request URL: {}", updateUrl);
+            logger.info("PATCH Request Body: {}", contactUpdate);
+
+            ResponseEntity<String> response = restTemplate.exchange(updateUrl, HttpMethod.PATCH, request, String.class);
+
+            logger.info("Update Response: {}", response.getBody());
+
             return response.getBody();
-        } catch (RestClientException e) {
-            logger.error("Failed to update contact '{}': {}", resourceName, e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("Failed to update contact: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to update contact: " + e.getMessage(), e);
         }
     }
-
 
     public void deleteContact(OAuth2AuthenticationToken authentication, String resourceName) {
         String token = getAccessToken(authentication);

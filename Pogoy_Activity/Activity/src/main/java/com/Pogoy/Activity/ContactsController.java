@@ -38,14 +38,28 @@ public class ContactsController {
         return "redirect:/contacts/view"; // Refresh contacts page
     }
 
-    @PostMapping("/update")
-    public String updateContact(OAuth2AuthenticationToken authentication,
-                                @RequestParam String resourceName,
-                                @RequestParam String name,
-                                @RequestParam String email,
-                                @RequestParam String etag) {  // ADD THIS
-        contactsService.updateContact(authentication, resourceName, name, email, etag);
-        return "redirect:/contacts/view";
+    @PatchMapping("/update/{resourceName:.+}")  // 🔥 Change path to avoid conflicts with static resources
+    @ResponseBody
+    public ResponseEntity<?> updateContact(
+            OAuth2AuthenticationToken authentication,
+            @PathVariable("resourceName") String resourceName,
+            @RequestBody Map<String, String> updates) {
+
+        System.out.println("🚀 PATCH request received for: " + resourceName);
+        System.out.println("📌 Request Body: " + updates);
+
+        try {
+            String response = contactsService.updateContact(
+                    authentication,
+                    resourceName,
+                    updates.get("newName"),
+                    updates.get("newEmail")
+            );
+            return ResponseEntity.ok(Map.of("message", "Update successful", "data", response));
+        } catch (Exception e) {
+            System.out.println("❌ ERROR: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/delete")

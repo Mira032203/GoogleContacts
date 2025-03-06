@@ -2,6 +2,7 @@ package com.Pogoy.Activity;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
@@ -11,8 +12,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(authorize -> authorize
-                        .anyRequest().authenticated() // All other requests require authentication
+        http.authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.PATCH, "/contacts/**").authenticated()  // ✅ Allow PATCH
+                        .requestMatchers(HttpMethod.PATCH, "/test/**").permitAll()  // ✅ Allow PATCH on test endpoint
+                        .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .defaultSuccessUrl("/contacts/view", true)
@@ -21,10 +24,7 @@ public class SecurityConfig {
                         .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                         .logoutSuccessUrl("/").permitAll()
                 )
-//                .csrf(csrf -> csrf
-//                        .ignoringRequestMatchers("/contacts/add", "/contacts/update", "/contacts/delete") // Disable CSRF for these endpoints
-//                );
-                .csrf(csrf -> csrf.disable());
+                .csrf(csrf -> csrf.disable());  // ✅ CSRF is already disabled
 
         return http.build();
     }

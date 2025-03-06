@@ -11,11 +11,10 @@
         <span th:text="${contact.email}"></span>
 
         <!-- Update Contact Form -->
-        <form action="/contacts/update" method="post">
+        <form onsubmit="convertToPatch(event, this)">
             <input type="hidden" name="resourceName" th:value="${contact.resourceName}">
-            <input type="hidden" name="etag" value="${contact.etag}">
-            <input type="text" name="name" th:value="${contact.displayName}" required>
-            <input type="email" name="email" th:value="${contact.email}" required>
+            <input type="text" name="newName" th:value="${contact.displayName}" required>
+            <input type="email" name="newEmail" th:value="${contact.email}" required>
             <button type="submit">Update</button>
         </form>
 
@@ -27,7 +26,6 @@
     </li>
 </ul>
 
-
 <!-- Add Contact Form -->
 <form id="addContactForm" action="/contacts/add" method="post">
     <input type="text" name="name" placeholder="Name" required>
@@ -35,23 +33,49 @@
     <button type="submit">Add Contact</button>
 </form>
 
+<script>
+    function convertToPatch(event, form) {
+    event.preventDefault();
+    const formData = new FormData(form);
+    let resourceName = formData.get("resourceName");
+
+    console.log("Updating contact with resourceName:", resourceName);
+    console.log("Final PATCH URL:", `/contacts/update/${resourceName}`);
+
+    const body = JSON.stringify({
+        newName: formData.get("newName"),
+        newEmail: formData.get("newEmail")
+    });
+
+fetch(`/contacts/update/${resourceName}`, {  // 🔥 Use `/contacts/update/`
+        method: "PATCH",
+        body: body,
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error("Server Response:", text);
+                throw new Error("Failed to update contact: " + text);
+            });
+        }
+        return response.text().then(text => text ? JSON.parse(text) : {}); // ✅ Handle empty responses
+    })
+    .then(data => {
+        console.log("✅ Contact updated:", data);
+        alert("Contact updated successfully!");
+        location.reload();
+    })
+    .catch(error => {
+        alert("Failed to update contact. Check console for details.");
+        console.error("Error updating contact:", error);
+    });
+}
+</script>
+
+
 </body>
 </html>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const addContactForm = document.getElementById("addContactForm");
-        addContactForm.addEventListener("submit", function(event) {
-            event.preventDefault(); // Prevent default form submission
-            fetch(addContactForm.action, {
-                method: "POST",
-                body: new FormData(addContactForm)
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log("Contact Added:", data);
-                location.reload(); // Refresh the page after adding
-            })
-            .catch(error => console.error("Error:", error));
-        });
-    });
-</script>
