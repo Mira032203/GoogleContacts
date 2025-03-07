@@ -11,7 +11,7 @@
         <span th:text="${contact.email}"></span>
 
         <!-- Update Contact Form -->
-        <form onsubmit="convertToPatch(event, this)">
+        <form onsubmit="updateContact(event, this)" method="post">
             <input type="hidden" name="resourceName" th:value="${contact.resourceName}">
             <input type="text" name="newName" th:value="${contact.displayName}" required>
             <input type="email" name="newEmail" th:value="${contact.email}" required>
@@ -34,48 +34,51 @@
 </form>
 
 <script>
-    function convertToPatch(event, form) {
-    event.preventDefault();
-    const formData = new FormData(form);
-    let resourceName = formData.get("resourceName");
+    function updateContact(event, form) {
+        event.preventDefault();
+        const formData = new FormData(form);
+        let resourceName = formData.get("resourceName");
+        let newName = formData.get("newName");
+        let newEmail = formData.get("newEmail");
 
-    console.log("Updating contact with resourceName:", resourceName);
-    console.log("Final PATCH URL:", `/contacts/update/${resourceName}`);
+        console.log("Updating contact: Deleting first, then adding new contact.");
 
-    const body = JSON.stringify({
-        newName: formData.get("newName"),
-        newEmail: formData.get("newEmail")
-    });
+        // First, delete the contact
+        fetch(`/contacts/delete`, {
+            method: "POST",
+            body: new URLSearchParams({ "resourceName": resourceName }),
+            headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { throw new Error("Failed to delete contact: " + text); });
+            }
+            console.log("Contact deleted successfully.");
 
-fetch(`/contacts/update/${resourceName}`, {  // 🔥 Use `/contacts/update/`
-        method: "PATCH",
-        body: body,
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.text().then(text => {
-                console.error("Server Response:", text);
-                throw new Error("Failed to update contact: " + text);
+            // Then, add a new contact
+            return fetch(`/contacts/add`, {
+                method: "POST",
+                body: new URLSearchParams({ "name": newName, "email": newEmail }),
+                headers: { "Content-Type": "application/x-www-form-urlencoded" }
             });
-        }
-        return response.text().then(text => text ? JSON.parse(text) : {}); // ✅ Handle empty responses
-    })
-    .then(data => {
-        console.log("✅ Contact updated:", data);
-        alert("Contact updated successfully!");
-        location.reload();
-    })
-    .catch(error => {
-        alert("Failed to update contact. Check console for details.");
-        console.error("Error updating contact:", error);
-    });
-}
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { throw new Error("Failed to add contact: " + text); });
+            }
+            return response.text();
+        })
+        .then(data => {
+            console.log("Contact updated successfully:", data);
+            alert("Contact updated successfully!");
+            location.reload();
+        })
+        .catch(error => {
+            alert("Failed to update contact. Check console for details.");
+            console.error("Error updating contact:", error);
+        });
+    }
 </script>
-
 
 </body>
 </html>

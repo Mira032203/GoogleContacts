@@ -2,6 +2,7 @@ package com.Pogoy.Activity;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +13,13 @@ import java.util.Map;
 @Controller
 @RequestMapping("/contacts")
 public class ContactsController {
-    @Autowired
-    private GoogleContactsService contactsService;
 
+    @Autowired
+    private static GoogleContactsService contactsService;
+    @Autowired
+    public ContactsController(GoogleContactsService contactsService) {
+        this.contactsService = contactsService;
+    }
     @GetMapping("/view")
     public String getContactsPage(OAuth2AuthenticationToken authentication, Model model) {
         try {
@@ -38,28 +43,14 @@ public class ContactsController {
         return "redirect:/contacts/view"; // Refresh contacts page
     }
 
-    @PatchMapping("/update/{resourceName:.+}")  // 🔥 Change path to avoid conflicts with static resources
-    @ResponseBody
-    public ResponseEntity<?> updateContact(
+    @PutMapping("/update")
+    public ResponseEntity<String> updateContact(
             OAuth2AuthenticationToken authentication,
-            @PathVariable("resourceName") String resourceName,
-            @RequestBody Map<String, String> updates) {
-
-        System.out.println("🚀 PATCH request received for: " + resourceName);
-        System.out.println("📌 Request Body: " + updates);
-
-        try {
-            String response = contactsService.updateContact(
-                    authentication,
-                    resourceName,
-                    updates.get("newName"),
-                    updates.get("newEmail")
-            );
-            return ResponseEntity.ok(Map.of("message", "Update successful", "data", response));
-        } catch (Exception e) {
-            System.out.println("❌ ERROR: " + e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            @RequestParam String resourceName,
+            @RequestParam String newName,
+            @RequestParam String newEmail) {
+        String response = contactsService.updateContact(authentication, resourceName, newName, newEmail);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/delete")
@@ -68,4 +59,5 @@ public class ContactsController {
         contactsService.deleteContact(authentication, resourceName);
         return "redirect:/contacts/view"; // Refresh contacts page
     }
+
 }
